@@ -3,66 +3,35 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ─── CORS ──────────────────────────────────────────────────
-// After deploying to GitHub Pages, add your exact URL below
-const ALLOWED = [
-  'http://localhost:3000',
-  'http://127.0.0.1:5500',
-  'http://localhost:5500',
-  // 'https://YOURUSERNAME.github.io'  ← uncomment & fill after deploy
-];
-
-app.use(cors({
-  origin: (origin, cb) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return cb(null, true);
-    // Allow all github.io origins
-    if (origin.includes('github.io')) return cb(null, true);
-    if (ALLOWED.includes(origin)) return cb(null, true);
-    cb(null, true); // Open during dev — tighten before selling
-  }
-}));
-
+app.use(cors({ origin: (origin, cb) => cb(null, true) }));
 app.use(express.json());
 
-// ─── HEALTH CHECK ──────────────────────────────────────────
-app.get('/', (req, res) => {
-  res.json({ status: '💀 PHANTOM CMO ONLINE', version: '1.0.0' });
-});
+const GEMINI_MODEL = 'gemini-2.0-flash';
 
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'online',
-    key_configured: !!process.env.ANTHROPIC_API_KEY
-  });
-});
+app.get('/', (req, res) => res.json({ status: '💀 PHANTOM CMO ONLINE', version: '1.0.0' }));
+app.get('/health', (req, res) => res.json({ status: 'online', key_configured: !!process.env.GEMINI_API_KEY }));
 
-// ─── MAIN ANALYSIS ENDPOINT ────────────────────────────────
 app.post('/analyze', async (req, res) => {
   const { companyUrl, competitorUrl, goal, industry } = req.body;
 
-  // Validate
   if (!companyUrl || !competitorUrl || !goal) {
-    return res.status(400).json({
-      error: 'Missing fields: companyUrl, competitorUrl, goal are required.'
-    });
+    return res.status(400).json({ error: 'Missing fields: companyUrl, competitorUrl, goal are required.' });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({
-      error: 'ANTHROPIC_API_KEY is not configured on the server.'
-    });
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server.' });
   }
 
   const sector = industry || 'General Business';
+  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
   const systemPrompt = `You are PHANTOM CMO — an elite marketing intelligence oracle with mastery across every industry and business vertical. You engineer winning campaigns for startups, SMBs, and enterprise brands worldwide.
 
-Your mission: Use web search to research both companies provided, then deliver a precise, actionable marketing intelligence report specifically tailored for the ${sector} sector.
+Your mission: Use Google Search to research both companies provided, then deliver a precise, actionable marketing intelligence report tailored for the ${sector} sector.
 
-Every section of your report — ICP, competitor gaps, 30-day blueprint, content hooks — must be adapted specifically for ${sector}. This is not generic advice. This is a weapon built for this exact industry.
+Every section — ICP, competitor gaps, 30-day blueprint, content hooks — must be specifically adapted for ${sector}. Not generic advice. A weapon built for this exact industry.
 
-Return ONLY valid JSON. No markdown. No code fences. No preamble. No extra text. Start your response with { and end with }.
+CRITICAL: Return ONLY valid JSON. No markdown. No code fences. No explanation. No extra text before or after. Your entire response must start with { and end with }.
 
 {
   "company_name": "string",
@@ -75,7 +44,7 @@ Return ONLY valid JSON. No markdown. No code fences. No preamble. No extra text.
   "gap": {
     "weaknesses": ["competitor_weakness_1","competitor_weakness_2","competitor_weakness_3"],
     "opportunities": ["your_opportunity_1","your_opportunity_2","your_opportunity_3"],
-    "positioning": "One razor-sharp positioning statement that exploits the gap in ${sector}"
+    "positioning": "One razor-sharp positioning statement for ${sector}"
   },
   "blueprint": [
     {"week":1,"focus":"string","actions":["action_1","action_2","action_3"]},
@@ -84,68 +53,67 @@ Return ONLY valid JSON. No markdown. No code fences. No preamble. No extra text.
     {"week":4,"focus":"string","actions":["action_1","action_2","action_3"]}
   ],
   "hooks": ["hook_1","hook_2","hook_3","hook_4"],
-  "verdict": "2-sentence brutal, specific marketing verdict for ${sector}"
+  "verdict": "2-sentence brutal, specific marketing verdict"
 }`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch(GEMINI_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        system: systemPrompt,
-        messages: [{
+        contents: [{
           role: 'user',
-          content: `Company URL: ${companyUrl}
-Competitor URL: ${competitorUrl}
-Primary Goal: ${goal}
-Industry: ${sector}
-
-Search both companies using web search, analyze their positioning, and return the full marketing strategy JSON.`
-        }]
+          parts: [{
+            text: `Company URL: ${companyUrl}\nCompetitor URL: ${competitorUrl}\nPrimary Goal: ${goal}\nIndustry: ${sector}\n\nSearch both companies using Google Search, analyze their positioning, and return ONLY the JSON strategy report.`
+          }]
+        }],
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
+        },
+        tools: [{ googleSearch: {} }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2048
+        }
       })
     });
 
-    const anthropicData = await response.json();
+    const data = await response.json();
 
-    // Handle Anthropic-level errors
-    if (anthropicData.error) {
-      console.error('Anthropic error:', anthropicData.error);
-      return res.status(502).json({ error: anthropicData.error.message });
+    if (data.error) {
+      console.error('Gemini API error:', data.error);
+      return res.status(502).json({ error: data.error.message });
     }
 
-    // Extract all text blocks (web search responses may have multiple)
-    const rawText = (anthropicData.content || [])
-      .filter(block => block.type === 'text')
-      .map(block => block.text)
+    // Extract text from all parts
+    const rawText = (data.candidates?.[0]?.content?.parts || [])
+      .filter(p => p.text)
+      .map(p => p.text)
       .join('');
 
-    // Extract the JSON object
-    const jsonStart = rawText.indexOf('{');
-    const jsonEnd = rawText.lastIndexOf('}');
-
-    if (jsonStart === -1 || jsonEnd === -1) {
-      console.error('No JSON found in response:', rawText.substring(0, 200));
-      return res.status(502).json({ error: 'The oracle returned no structured data. Please try again.' });
+    if (!rawText) {
+      return res.status(502).json({ error: 'The oracle returned no data. Please try again.' });
     }
 
-    const parsed = JSON.parse(rawText.substring(jsonStart, jsonEnd + 1));
-    res.json({ success: true, data: parsed });
+    // Extract JSON object cleanly
+    const start = rawText.indexOf('{');
+    const end = rawText.lastIndexOf('}');
+
+    if (start === -1 || end === -1) {
+      console.error('No JSON in response:', rawText.substring(0, 300));
+      return res.status(502).json({ error: 'Oracle returned no structured data. Please try again.' });
+    }
+
+    const result = JSON.parse(rawText.substring(start, end + 1));
+    res.json({ success: true, data: result });
 
   } catch (err) {
-    console.error('Phantom CMO server error:', err.message);
-    res.status(500).json({ error: err.message || 'Internal server error' });
+    console.error('Phantom CMO Error:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ─── START ─────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`💀 PHANTOM CMO running on port ${PORT}`);
-  console.log(`   API Key: ${process.env.ANTHROPIC_API_KEY ? '✓ Configured' : '✗ MISSING — set ANTHROPIC_API_KEY'}`);
+  console.log(`   Gemini Key: ${process.env.GEMINI_API_KEY ? '✓ Configured' : '✗ MISSING — set GEMINI_API_KEY'}`);
 });
