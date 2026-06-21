@@ -3,14 +3,11 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Allow all origins
 app.use(cors());
 app.use(express.json());
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
-
 app.get('/', (req, res) => res.json({ status: '💀 PHANTOM CMO ONLINE', version: '1.0.0' }));
-app.get('/health', (req, res) => res.json({ status: 'online', key_configured: !!process.env.GEMINI_API_KEY }));
+app.get('/health', (req, res) => res.json({ status: 'online', key_configured: !!process.env.GROQ_API_KEY }));
 
 app.post('/analyze', async (req, res) => {
   console.log('📥 /analyze called');
@@ -21,81 +18,83 @@ app.post('/analyze', async (req, res) => {
     return res.status(400).json({ error: 'Missing fields: companyUrl, competitorUrl, goal are required.' });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    console.error('❌ GEMINI_API_KEY not set');
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server.' });
+  if (!process.env.GROQ_API_KEY) {
+    console.error('❌ GROQ_API_KEY not set');
+    return res.status(500).json({ error: 'GROQ_API_KEY is not configured on the server.' });
   }
 
   const sector = industry || 'General Business';
-  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
-  const prompt = `You are PHANTOM CMO — an elite marketing intelligence oracle. Analyze both companies and deliver a marketing intelligence report tailored for the ${sector} sector.
+  const systemPrompt = `You are PHANTOM CMO — an elite marketing intelligence oracle with mastery across every industry. You engineer winning campaigns for startups, SMBs, and enterprise brands worldwide.
 
-Company URL: ${companyUrl}
+Your mission: Analyze both companies and deliver a precise, actionable marketing intelligence report tailored specifically for the ${sector} sector.
+
+Every section — ICP, competitor gaps, 30-day blueprint, content hooks — must be specifically adapted for ${sector}.
+
+CRITICAL RULE: Return ONLY valid JSON. No markdown. No code fences. No explanation. No text before or after. Your entire response must start with { and end with }.`;
+
+  const userPrompt = `Company URL: ${companyUrl}
 Competitor URL: ${competitorUrl}
 Primary Goal: ${goal}
 Industry: ${sector}
 
-Research both companies and return ONLY valid JSON. No markdown. No explanation. Start with { and end with }:
+Analyze both companies based on what you know about them and return ONLY this JSON structure:
 
 {
   "company_name": "string",
   "competitor_name": "string",
   "icp": {
-    "demographics": "2-sentence audience summary for ${sector}",
+    "demographics": "2-sentence audience summary specific to ${sector}",
     "pain_points": ["pain_1","pain_2","pain_3"],
     "desires": ["desire_1","desire_2","desire_3"]
   },
   "gap": {
-    "weaknesses": ["weakness_1","weakness_2","weakness_3"],
-    "opportunities": ["opp_1","opp_2","opp_3"],
-    "positioning": "One sharp positioning statement"
+    "weaknesses": ["competitor_weakness_1","competitor_weakness_2","competitor_weakness_3"],
+    "opportunities": ["your_opportunity_1","your_opportunity_2","your_opportunity_3"],
+    "positioning": "One razor-sharp positioning statement"
   },
   "blueprint": [
-    {"week":1,"focus":"string","actions":["a1","a2","a3"]},
-    {"week":2,"focus":"string","actions":["a1","a2","a3"]},
-    {"week":3,"focus":"string","actions":["a1","a2","a3"]},
-    {"week":4,"focus":"string","actions":["a1","a2","a3"]}
+    {"week":1,"focus":"string","actions":["action_1","action_2","action_3"]},
+    {"week":2,"focus":"string","actions":["action_1","action_2","action_3"]},
+    {"week":3,"focus":"string","actions":["action_1","action_2","action_3"]},
+    {"week":4,"focus":"string","actions":["action_1","action_2","action_3"]}
   ],
   "hooks": ["hook_1","hook_2","hook_3","hook_4"],
-  "verdict": "2-sentence brutal marketing verdict"
+  "verdict": "2-sentence brutal, specific marketing verdict"
 }`;
 
   try {
-    console.log('🔍 Calling Gemini API...');
+    console.log('🔍 Calling Groq API...');
 
-    const response = await fetch(GEMINI_URL, {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+      },
       body: JSON.stringify({
-        contents: [{
-          role: 'user',
-          parts: [{ text: prompt }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048
-        }
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 2048
       })
     });
 
-    console.log('📡 Gemini status:', response.status);
+    console.log('📡 Groq status:', response.status);
     const data = await response.json();
 
     if (data.error) {
-      console.error('❌ Gemini error:', JSON.stringify(data.error));
+      console.error('❌ Groq error:', JSON.stringify(data.error));
       return res.status(502).json({ error: data.error.message });
     }
 
-    const rawText = (data.candidates?.[0]?.content?.parts || [])
-      .filter(p => p.text)
-      .map(p => p.text)
-      .join('');
-
+    const rawText = data.choices?.[0]?.message?.content || '';
     console.log('📝 Raw response length:', rawText.length);
 
     if (!rawText) {
-      console.error('❌ Empty response from Gemini');
       return res.status(502).json({ error: 'The oracle returned no data. Please try again.' });
     }
 
@@ -119,5 +118,5 @@ Research both companies and return ONLY valid JSON. No markdown. No explanation.
 
 app.listen(PORT, () => {
   console.log(`💀 PHANTOM CMO running on port ${PORT}`);
-  console.log(`   Gemini Key: ${process.env.GEMINI_API_KEY ? '✓ Configured' : '✗ MISSING'}`);
+  console.log(`   Groq Key: ${process.env.GROQ_API_KEY ? '✓ Configured' : '✗ MISSING — set GROQ_API_KEY'}`);
 });
