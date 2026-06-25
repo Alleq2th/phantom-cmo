@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PHANTOM CMO — Marketing Intelligence Oracle</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0D0D0D;--s1:#161616;--s2:#1A0808;--cr:#8B1A1A;--bl:#C41E1E;--bone:#E8E0D0;--ash:#7A7060;--glow:rgba(139,26,26,0.45)}
+body{background:var(--bg);color:var(--bone);font-family:'Space Mono',monospace;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:999}
+#app{max-width:820px;margin:0 auto;padding:16px 14px 60px}
+
+/* HEADER */
+header{text-align:center;padding:50px 16px 28px}
+.drips{display:flex;justify-content:center;gap:28px;margin-bottom:16px}
+.drip{width:3px;background:linear-gradient(to bottom,var(--bl),transparent);border-radius:0 0 50% 50%}
+.drip:nth-child(1){height:42px;animation:drip 3s ease-in-out 0s infinite}
+.drip:nth-child(2){height:66px;animation:drip 3s ease-in-out .4s infinite}
+.drip:nth-child(3){height:30px;animation:drip 3s ease-in-out .9s infinite}
+.drip:nth-child(4){height:54px;animation:drip 3s ease-in-out .2s infinite}
+.drip:nth-child(5){height:46px;animation:drip 3s ease-in-out .7s infinite}
+@keyframes drip{0%,100%{opacity:.5;transform:scaleY(1)}50%{opacity:1;transform:scaleY(1.15)}}
+.logo{font-family:'Cinzel Decorative',serif;font-size:clamp(24px,7vw,54px);font-weight:900;color:var(--bone);text-shadow:0 0 30px var(--glow),0 0 70px rgba(139,26,26,.2);letter-spacing:5px;line-height:1.1}
+.logo span{color:var(--bl)}
+.tagline{font-size:10px;letter-spacing:4px;color:var(--ash);text-transform:uppercase;margin-top:10px}
+.divider{width:100%;height:1px;background:linear-gradient(to right,transparent,var(--cr),transparent);margin:26px 0}
+
+/* CARD */
+.card{background:var(--s1);border:1px solid var(--cr);border-radius:3px;padding:26px;box-shadow:0 0 40px rgba(139,26,26,.1),inset 0 0 40px rgba(0,0,0,.35)}
+.card-title{font-family:'Cinzel Decorative',serif;font-size:11px;letter-spacing:4px;color:var(--bl);text-transform:uppercase;margin-bottom:22px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:9px;letter-spacing:3px;color:var(--ash);text-transform:uppercase;margin-bottom:7px}
+.field input,.field select{width:100%;background:#0D0D0D;border:1px solid #2A2A2A;border-radius:2px;color:var(--bone);font-family:'Space Mono',monospace;font-size:12px;padding:11px 13px;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none}
+.field input::placeholder{color:#3C3C3C}
+.field input:focus,.field select:focus{border-color:var(--cr);box-shadow:0 0 14px rgba(139,26,26,.28)}
+.field select option{background:#161616}
+.two-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.three-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+/* PLATFORM TOGGLES */
+.platform-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.ptoggle{display:none}
+.ptoggle+label{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;background:#0D0D0D;border:1px solid #2A2A2A;border-radius:2px;font-size:10px;letter-spacing:2px;color:var(--ash);text-transform:uppercase;cursor:pointer;transition:all .2s;user-select:none}
+.ptoggle:checked+label{background:rgba(139,26,26,.25);border-color:var(--cr);color:var(--bone)}
+.ptoggle+label:hover{border-color:var(--cr);color:var(--bone)}
+
+.summon-btn{width:100%;background:var(--cr);border:none;border-radius:2px;color:var(--bone);font-family:'Cinzel Decorative',serif;font-size:12px;font-weight:700;letter-spacing:3px;padding:15px;cursor:pointer;margin-top:8px;transition:background .2s,box-shadow .2s,transform .1s}
+.summon-btn:hover:not(:disabled){background:var(--bl);box-shadow:0 0 28px rgba(196,30,30,.55)}
+.summon-btn:active:not(:disabled){transform:scale(.99)}
+.summon-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* LOADING */
+#loading-section{text-align:center;padding:70px 20px}
+.skull{font-size:52px;display:block;margin-bottom:22px;animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.12);opacity:1}}
+.load-msg{font-size:10px;letter-spacing:4px;color:var(--ash);text-transform:uppercase;transition:opacity .3s}
+
+/* RESULTS */
+.res-header{text-align:center;margin-bottom:26px}
+.res-name{font-family:'Cinzel Decorative',serif;font-size:clamp(13px,4vw,20px);color:var(--bone);text-shadow:0 0 16px var(--glow)}
+.res-vs{font-size:9px;letter-spacing:4px;color:var(--ash);margin:8px 0;text-transform:uppercase}
+.res-meta{font-size:9px;letter-spacing:2px;color:var(--ash);margin-top:8px;text-transform:uppercase}
+.rcard{background:var(--s1);border:1px solid #222;border-left:3px solid var(--cr);border-radius:3px;padding:20px;margin-bottom:13px}
+.rcard.hl{border-left-color:var(--bl);box-shadow:0 0 20px rgba(139,26,26,.12)}
+.rlabel{font-size:9px;letter-spacing:4px;color:var(--bl);text-transform:uppercase;margin-bottom:13px;font-weight:700}
+.prose{font-size:12px;color:var(--bone);line-height:1.85;margin-top:4px}
+.highlight-box{padding:12px;background:#0D0D0D;border-left:2px solid var(--bl);border-radius:0 2px 2px 0;margin-top:12px}
+.hb-label{font-size:9px;letter-spacing:3px;color:var(--bl);text-transform:uppercase;margin-bottom:5px}
+.hb-text{font-size:12px;color:var(--bone);font-style:italic;line-height:1.65}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:13px}
+.col-title{font-size:9px;letter-spacing:3px;color:var(--ash);text-transform:uppercase;margin-bottom:10px}
+.blist{list-style:none;padding:0}
+.blist li{font-size:11px;color:var(--bone);padding:5px 0;border-bottom:1px solid #1C1C1C;line-height:1.65}
+.blist li::before{content:'▸ ';color:var(--cr)}
+.platform-card{margin-bottom:14px;padding:16px;background:#0D0D0D;border:1px solid #222;border-radius:2px}
+.plat-name{font-family:'Cinzel Decorative',serif;font-size:12px;color:var(--bl);margin-bottom:10px;letter-spacing:2px}
+.plat-meta{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.plat-meta span{font-size:9px;letter-spacing:2px;color:var(--ash);text-transform:uppercase;padding:4px 8px;border:1px solid #2A2A2A;border-radius:2px}
+.plat-types{margin-bottom:10px}
+.plat-hook{padding:10px;background:#161616;border-left:2px solid var(--cr);border-radius:0 2px 2px 0;font-size:11px;color:var(--bone);font-style:italic;line-height:1.6}
+.email-item{margin-bottom:10px;padding:14px;background:#0D0D0D;border:1px solid #1C1C1C;border-radius:2px}
+.email-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px}
+.email-num{font-size:9px;letter-spacing:3px;color:var(--bl);text-transform:uppercase;font-weight:700}
+.email-time{font-size:9px;color:var(--ash);letter-spacing:1px}
+.email-subject{font-size:12px;color:var(--bone);font-weight:700;margin-bottom:6px}
+.email-purpose{font-size:11px;color:var(--ash);line-height:1.6}
+.week-item{margin-bottom:11px;padding:14px;background:#0D0D0D;border-radius:2px;border:1px solid #1C1C1C}
+.wk-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.wk-num{font-size:9px;letter-spacing:3px;color:var(--bl);text-transform:uppercase;font-weight:700}
+.wk-theme{font-size:12px;color:var(--bone);font-weight:700}
+.day-row{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+.day-label{font-size:9px;letter-spacing:2px;color:var(--cr);text-transform:uppercase;width:36px;flex-shrink:0;padding-top:2px}
+.day-action{font-size:11px;color:var(--bone);line-height:1.7;flex:1}
+.kpi-box{margin-top:10px;padding:8px 10px;background:#161616;border-radius:2px}
+.kpi-label{font-size:9px;letter-spacing:2px;color:var(--ash);text-transform:uppercase;margin-bottom:3px}
+.kpi-text{font-size:11px;color:var(--bone)}
+.copy-item{margin-bottom:12px;padding:14px;background:#0D0D0D;border-radius:2px;border:1px solid #1C1C1C}
+.copy-fw{font-size:9px;letter-spacing:3px;color:var(--bl);text-transform:uppercase;margin-bottom:8px;font-weight:700}
+.copy-text{font-size:12px;color:var(--bone);line-height:1.8;font-style:italic}
+.hook{font-size:12px;color:var(--bone);padding:10px 14px;background:#0D0D0D;border-left:2px solid var(--cr);margin-bottom:8px;border-radius:0 2px 2px 0;font-style:italic;line-height:1.6}
+.verdict-box{background:var(--s2);border:1px solid var(--cr);border-radius:3px;padding:22px;text-align:center;box-shadow:0 0 30px rgba(139,26,26,.18)}
+.verdict-text{font-size:13px;color:var(--bone);line-height:1.9}
+.reset-btn{background:transparent;border:1px solid var(--cr);color:var(--cr);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:3px;padding:12px 24px;cursor:pointer;text-transform:uppercase;display:block;margin:26px auto;transition:all .2s;border-radius:2px}
+.reset-btn:hover{background:var(--cr);color:var(--bone)}
+.err{background:#1A0A0A;border:1px solid var(--bl);border-radius:3px;padding:16px;text-align:center;color:var(--bl);font-size:10px;letter-spacing:1px;margin-top:14px;line-height:1.9}
+.hidden{display:none!important}
+@media(max-width:540px){.two{grid-template-columns:1fr}.two-fields{grid-template-columns:1fr}.three-fields{grid-template-columns:1fr}.card{padding:18px}header{padding:36px 10px 20px}.plat-meta{gap:8px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="drips">
+      <div class="drip"></div><div class="drip"></div><div class="drip"></div>
+      <div class="drip"></div><div class="drip"></div>
+    </div>
+    <div class="logo">PHANTOM <span>CMO</span></div>
+    <p class="tagline">The Marketing Oracle Has Been Summoned</p>
+  </header>
+
+  <div class="divider"></div>
+
+  <section id="input-section">
+    <div class="card">
+      <div class="card-title">Enter the Targets</div>
+
+      <div class="two-fields">
+        <div class="field">
+          <label>Company URL</label>
+          <input id="company-url" type="url" placeholder="https://yourcompany.com">
+        </div>
+        <div class="field">
+          <label>Competitor URL</label>
+          <input id="competitor-url" type="url" placeholder="https://competitor.com">
+        </div>
+      </div>
+
+      <div class="three-fields">
+        <div class="field">
+          <label>Industry</label>
+          <select id="industry">
+            <option value="Real Estate">Real Estate</option>
+            <option value="Fashion & Luxury">Fashion & Luxury</option>
+            <option value="Food & Beverage">Food & Beverage</option>
+            <option value="Fitness & Health">Fitness & Health</option>
+            <option value="Finance & Crypto">Finance & Crypto</option>
+            <option value="Tech & SaaS">Tech & SaaS</option>
+            <option value="E-commerce">E-commerce</option>
+            <option value="Travel & Hospitality">Travel & Hospitality</option>
+            <option value="Education & E-learning">Education</option>
+            <option value="Media & Entertainment">Media & Entertainment</option>
+            <option value="Healthcare">Healthcare</option>
+            <option value="Automotive">Automotive</option>
+            <option value="Sports & Gaming">Sports & Gaming</option>
+            <option value="Beauty & Cosmetics">Beauty & Cosmetics</option>
+            <option value="Legal & Professional">Legal & Professional</option>
+            <option value="Solar & Energy">Solar & Energy</option>
+            <option value="Restaurants & Food Service">Restaurants</option>
+            <option value="Logistics & Supply Chain">Logistics</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Primary Goal</label>
+          <select id="goal">
+            <option value="Brand Awareness">Brand Awareness</option>
+            <option value="Lead Generation">Lead Generation</option>
+            <option value="Product Launch">Product Launch</option>
+            <option value="Revenue Growth">Revenue Growth</option>
+            <option value="Market Domination">Market Domination</option>
+            <option value="Customer Retention">Customer Retention</option>
+            <option value="Social Media Growth">Social Media Growth</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Business Type</label>
+          <select id="biztype">
+            <option value="B2C">B2C (Consumers)</option>
+            <option value="B2B">B2B (Businesses)</option>
+            <option value="Both B2B and B2C">Both</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Monthly Budget</label>
+        <select id="budget">
+          <option value="No budget (organic only)">No budget — organic only</option>
+          <option value="Under $500 per month">Under $500/month</option>
+          <option value="$500 to $2,000 per month">$500 – $2,000/month</option>
+          <option value="$2,000 to $10,000 per month">$2,000 – $10,000/month</option>
+          <option value="$10,000+ per month">$10,000+/month</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Active Platforms — select all that apply</label>
+        <div class="platform-grid">
+          <input type="checkbox" class="ptoggle" id="pt1" value="TikTok"><label for="pt1">TikTok</label>
+          <input type="checkbox" class="ptoggle" id="pt2" value="Instagram"><label for="pt2">Instagram</label>
+          <input type="checkbox" class="ptoggle" id="pt3" value="YouTube"><label for="pt3">YouTube</label>
+          <input type="checkbox" class="ptoggle" id="pt4" value="LinkedIn"><label for="pt4">LinkedIn</label>
+          <input type="checkbox" class="ptoggle" id="pt5" value="Facebook"><label for="pt5">Facebook</label>
+          <input type="checkbox" class="ptoggle" id="pt6" value="Twitter/X"><label for="pt6">Twitter/X</label>
+          <input type="checkbox" class="ptoggle" id="pt7" value="Email Marketing"><label for="pt7">Email</label>
+          <input type="checkbox" class="ptoggle" id="pt8" value="Google/Meta Paid Ads"><label for="pt8">Paid Ads</label>
+        </div>
+      </div>
+
+      <button class="summon-btn" id="summon-btn" onclick="runAgent()">⚡ SUMMON THE STRATEGY</button>
+      <div id="err-box"></div>
+    </div>
+  </section>
+
+  <section id="loading-section" class="hidden">
+    <span class="skull">💀</span>
+    <p class="load-msg" id="load-msg">INFILTRATING TARGET SYSTEMS...</p>
+  </section>
+
+  <section id="results-section" class="hidden"></section>
+</div>
+
+<script>
+// 🔧 UPDATE after deploying backend
+const BACKEND_URL = 'https://phantom-cmo.onrender.com';
+
+const MSGS = [
+  'INFILTRATING TARGET SYSTEMS...','SCANNING COMPETITOR WEAKNESSES...',
+  'APPLYING HORMOZI FRAMEWORKS...','DECODING AUDIENCE PSYCHOLOGY...',
+  'BUILDING THE 30-DAY WAR ROOM...','THE ORACLE IS SPEAKING...'
+];
+let loadTimer;
+
+function startLoad(){
+  let i=0; const el=document.getElementById('load-msg'); el.textContent=MSGS[0];
+  loadTimer=setInterval(()=>{i=(i+1)%MSGS.length;el.style.opacity='0';setTimeout(()=>{el.textContent=MSGS[i];el.style.opacity='1';},200);},2600);
+}
+function stopLoad(){clearInterval(loadTimer)}
+function show(id){document.getElementById(id).classList.remove('hidden')}
+function hide(id){document.getElementById(id).classList.add('hidden')}
+
+async function runAgent(){
+  const companyUrl=document.getElementById('company-url').value.trim();
+  const competitorUrl=document.getElementById('competitor-url').value.trim();
+  const goal=document.getElementById('goal').value;
+  const industry=document.getElementById('industry').value;
+  const budget=document.getElementById('budget').value;
+  const bizType=document.getElementById('biztype').value;
+  const platforms=[...document.querySelectorAll('.ptoggle:checked')].map(c=>c.value);
+  const errEl=document.getElementById('err-box');
+  errEl.innerHTML='';
+
+  if(!companyUrl||!competitorUrl){
+    errEl.innerHTML='<div class="err">⚠ BOTH URLS REQUIRED TO BEGIN THE RITUAL</div>';return;
+  }
+
+  const btn=document.getElementById('summon-btn');
+  btn.disabled=true;
+  hide('input-section');show('loading-section');hide('results-section');
+  startLoad();
+
+  try{
+    const resp=await fetch(`${BACKEND_URL}/analyze`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({companyUrl,competitorUrl,goal,industry,platforms,budget,bizType})
+    });
+    const json=await resp.json();
+    if(!resp.ok||!json.success) throw new Error(json.error||'Server error');
+    stopLoad();hide('loading-section');
+    render(json.data,goal,industry,platforms);
+    show('results-section');
+  }catch(err){
+    stopLoad();hide('loading-section');show('input-section');
+    errEl.innerHTML=`<div class="err">⚠ THE ORACLE HAS FAILED<br><small style="color:var(--ash);display:block;margin-top:6px">${err.message}</small></div>`;
+    btn.disabled=false;
+  }
+}
+
+function render(d,goal,industry,platforms){
+  const rs=document.getElementById('results-section');
+  const icp=d.icp||{};
+  const ct=d.competitor_teardown||{};
+  const pp=d.platform_playbook||[];
+  const es=d.email_sequence||[];
+  const bp=d.blueprint||[];
+  const ca=d.copy_angles||[];
+  const hooks=d.hooks||[];
+
+  rs.innerHTML=`
+    <div class="res-header">
+      <div class="res-name">${d.company_name||'Your Company'}</div>
+      <div class="res-vs">vs</div>
+      <div class="res-name" style="color:var(--cr)">${d.competitor_name||'Competitor'}</div>
+      <p class="res-meta">${industry} · ${goal}</p>
+    </div>
+    <div class="divider"></div>
+
+    <!-- ICP -->
+    <div class="rcard">
+      <div class="rlabel">01 — Ideal Customer Profile</div>
+      <p class="prose">${icp.portrait||''}</p>
+      <div class="highlight-box" style="margin-top:12px">
+        <div class="hb-label">Top Pain — In Their Own Words</div>
+        <p class="hb-text">"${icp.top_pain||''}"</p>
+      </div>
+      <div class="highlight-box">
+        <div class="hb-label">Buying Trigger</div>
+        <p class="hb-text">${icp.buying_trigger||''}</p>
+      </div>
+      <div class="two">
+        <div>
+          <div class="col-title">Pain Points</div>
+          <ul class="blist">${(icp.pain_points||[]).map(p=>`<li>${p}</li>`).join('')}</ul>
+        </div>
+        <div>
+          <div class="col-title">Core Desires</div>
+          <ul class="blist">${(icp.desires||[]).map(p=>`<li>${p}</li>`).join('')}</ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPETITOR TEARDOWN -->
+    <div class="rcard">
+      <div class="rlabel">02 — Competitor Teardown</div>
+      <div class="highlight-box" style="margin-top:0">
+        <div class="hb-label">Messaging Gap</div>
+        <p class="hb-text">${ct.messaging_gap||''}</p>
+      </div>
+      <div class="highlight-box">
+        <div class="hb-label">Content Weakness</div>
+        <p class="hb-text">${ct.content_weakness||''}</p>
+      </div>
+      <div class="highlight-box">
+        <div class="hb-label">Audience They're Ignoring</div>
+        <p class="hb-text">${ct.audience_ignored||''}</p>
+      </div>
+      <div class="highlight-box" style="border-left-color:var(--bl)">
+        <div class="hb-label" style="color:var(--bl)">Your Attack Angle</div>
+        <p class="hb-text">"${ct.attack_angle||''}"</p>
+      </div>
+    </div>
+
+    <!-- PLATFORM PLAYBOOK -->
+    ${pp.length ? `
+    <div class="rcard hl">
+      <div class="rlabel">03 — Platform Playbook</div>
+      ${pp.map(p=>`
+        <div class="platform-card">
+          <div class="plat-name">${p.platform||''}</div>
+          <div class="plat-meta">
+            <span>📅 ${p.frequency||''}</span>
+            <span>⏰ ${p.best_times||''}</span>
+          </div>
+          <p class="prose" style="margin-bottom:10px;font-size:11px;color:var(--ash)">${p.why_it_wins||''}</p>
+          <div class="plat-types">
+            <div class="col-title" style="margin-bottom:8px">Content Types</div>
+            <ul class="blist">${(p.content_types||[]).map(ct=>`<li>${ct}</li>`).join('')}</ul>
+          </div>
+          <div style="margin-top:10px">
+            <div class="col-title" style="margin-bottom:6px">Sample Hook — Use This</div>
+            <div class="plat-hook">"${p.sample_hook||''}"</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>` : ''}
+
+    <!-- EMAIL SEQUENCE -->
+    ${es.length ? `
+    <div class="rcard">
+      <div class="rlabel">04 — Email Sequence</div>
+      ${es.map(e=>`
+        <div class="email-item">
+          <div class="email-meta">
+            <span class="email-num">Email ${e.number||''}</span>
+            <span class="email-time">${e.send_time||''}</span>
+          </div>
+          <div class="email-subject">Subject: "${e.subject_line||''}"</div>
+          <div class="email-purpose">${e.what_it_does||''}</div>
+        </div>
+      `).join('')}
+    </div>` : ''}
+
+    <!-- 30-DAY BLUEPRINT -->
+    <div class="rcard hl">
+      <div class="rlabel">${es.length ? '05' : '04'} — 30-Day War Room</div>
+      ${bp.map(w=>`
+        <div class="week-item">
+          <div class="wk-header">
+            <span class="wk-num">Week ${w.week}</span>
+            <span class="wk-theme">${w.theme||''}</span>
+          </div>
+          <div class="day-row"><span class="day-label">MON</span><span class="day-action">${w.monday||''}</span></div>
+          <div class="day-row"><span class="day-label">WED</span><span class="day-action">${w.wednesday||''}</span></div>
+          <div class="day-row"><span class="day-label">FRI</span><span class="day-action">${w.friday||''}</span></div>
+          ${w.kpi?`<div class="kpi-box"><div class="kpi-label">KPI This Week</div><div class="kpi-text">${w.kpi}</div></div>`:''}
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- COPY ANGLES -->
+    ${ca.length ? `
+    <div class="rcard">
+      <div class="rlabel">${es.length ? '06' : '05'} — Ready-to-Use Copy Angles</div>
+      ${ca.map(c=>`
+        <div class="copy-item">
+          <div class="copy-fw">${c.framework||''}</div>
+          <p class="copy-text">${c.copy||''}</p>
+        </div>
+      `).join('')}
+    </div>` : ''}
+
+    <!-- HOOKS -->
+    <div class="rcard">
+      <div class="rlabel">🎯 Killer Hooks — Copy & Use</div>
+      ${hooks.map(h=>`<div class="hook">"${h}"</div>`).join('')}
+    </div>
+
+    <div class="divider"></div>
+    <div class="verdict-box">
+      <div class="rlabel" style="text-align:center;margin-bottom:12px">⚡ The Oracle's Verdict</div>
+      <p class="verdict-text">${d.verdict||''}</p>
+    </div>
+    <button class="reset-btn" onclick="resetAgent()">↩ New Analysis</button>
+  `;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function resetAgent(){
+  hide('results-section');show('input-section');
+  document.getElementById('summon-btn').disabled=false;
+  document.getElementById('err-box').innerHTML='';
+}
+</script>
+</body>
+</html>
